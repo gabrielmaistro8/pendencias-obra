@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Pendências — Afonso França</title>
+<style>
+:root {
+  --bg:#eef2f8; --surface:#f7f9fc; --border:#c8d6e8; --border-soft:#dae4f0;
+  --text:#0d1f3c; --muted:#4a6080; --faint:#8aa0bc;
+  --blue:#1a4f8a; --blue-dark:#0d3566; --blue-lt:#dae6f5;
+  --done:#1a6fc4; --shadow:0 1px 3px rgba(13,31,60,.08),0 4px 16px rgba(13,31,60,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Courier New',Consolas,monospace;background:var(--bg);min-height:100vh;padding:2rem 1rem 4rem;color:var(--text);}
+.container{max-width:700px;margin:0 auto;}
+
+/* HEADER */
+.header{margin-bottom:2rem;}
+.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;}
+.af-logo{display:flex;align-items:center;gap:10px;}
+.af-mono{width:44px;height:44px;border-radius:8px;background:var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.af-mono span{color:#fff;font-size:16px;font-weight:700;letter-spacing:-1px;}
+.af-name strong{display:block;font-size:14px;font-weight:700;color:var(--blue-dark);letter-spacing:.03em;}
+.af-name small{font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;}
+.date-pill{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 14px;white-space:nowrap;flex-shrink:0;margin-top:4px;}
+.header h1{font-family:Georgia,serif;font-size:clamp(22px,4vw,30px);font-weight:300;letter-spacing:-.02em;line-height:1.1;}
+.header h1 em{font-style:italic;font-weight:500;}
+.header-sub{font-size:11px;color:var(--faint);margin-top:4px;}
+.btn-export{margin-top:12px;display:inline-flex;align-items:center;gap:7px;font-size:11px;font-family:inherit;padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--muted);cursor:pointer;transition:all .15s;}
+.btn-export:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .btn-excel {
+    margin-top: 8px; margin-left: 8px;
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11px; font-family: inherit; padding: 8px 16px;
+    border: 1px solid #16a34a; border-radius: 8px;
+    background: #f0fdf4; color: #16a34a; cursor: pointer; transition: all .15s;
+  }
+  .btn-excel:hover { background: #16a34a; color: #fff; }
+
+.btn-export.copied{background:#059669;color:#fff;border-color:#059669;}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.5rem;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden;}
+.stat::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--border-soft);}
+.stat:nth-child(2)::after{background:#059669;opacity:.5;}
+.stat:nth-child(3)::after{background:#dc2626;opacity:.3;}
+.stat-label{font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.stat-value{font-family:Georgia,serif;font-size:30px;font-weight:300;color:var(--text);line-height:1;}
+
+/* FILTER */
+.filter-bar{display:none;align-items:center;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;}
+.filter-bar.on{display:flex;}
+.filter-label{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0;}
+.filter-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{font-size:11px;font-family:inherit;padding:4px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--muted);cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--blue);color:var(--blue);}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff;}
+
+/* SECTION */
+.section{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:1.25rem;overflow:hidden;box-shadow:var(--shadow);}
+.sec-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border-soft);flex-wrap:wrap;gap:8px;}
+.sec-title{display:flex;align-items:center;gap:10px;}
+.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;}
+.av-s{background:var(--blue-lt);color:var(--blue);}
+.av-v{background:#ccddf5;color:var(--blue-dark);}
+.sec-title h2{font-family:Georgia,serif;font-size:16px;font-weight:500;}
+.sec-right{display:flex;align-items:center;gap:10px;}
+.count{font-size:10px;color:var(--faint);}
+.btn-clear{font-size:10px;font-family:inherit;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--faint);cursor:pointer;transition:all .15s;}
+.btn-clear:hover{color:#dc2626;border-color:#fca5a5;background:#fff5f5;}
+
+/* TASKS */
+.task-list{padding:6px 10px;}
+.task{display:flex;align-items:flex-start;gap:10px;padding:10px 8px;border-radius:8px;border-bottom:1px solid var(--border-soft);transition:background .1s;user-select:none;}
+.task:last-child{border-bottom:none;}
+.task:hover{background:#e8eef8;}
+.task.done{opacity:.38;}
+.task.done .task-text{text-decoration:line-through;color:var(--faint);}
+.chk{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border);flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
+.task.done .chk{background:var(--done);border-color:var(--done);}
+.chk svg{display:none;}
+.task.done .chk svg{display:block;}
+.task-body{display:flex;flex-direction:column;flex:1;gap:5px;}
+.task-text{font-size:13px;color:var(--text);line-height:1.5;}
+.task-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+
+/* BADGES */
+.badge{font-size:10px;font-family:inherit;padding:2px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--faint);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.badge:hover{border-color:var(--blue);color:var(--blue);}
+.badge.urgent{background:#fff0f0;border-color:#fca5a5;color:#dc2626;font-weight:600;}
+.badge.soon{background:#fffbeb;border-color:#fcd34d;color:#b45309;font-weight:600;}
+.badge.ok{background:#f0fdf4;border-color:#86efac;color:#16a34a;}
+.badge.filled{background:var(--blue-lt);border-color:var(--blue);color:var(--blue-dark);font-weight:600;}
+
+/* INLINE INPUTS */
+.iinput{font-size:11px;font-family:inherit;padding:3px 8px;border:1px solid var(--blue);border-radius:5px;background:#fff;color:var(--text);outline:none;display:none;width:150px;}
+.iinput.on{display:inline-block;}
+
+/* MIC SMALL */
+.mic-sm{width:22px;height:22px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--faint);cursor:pointer;display:none;align-items:center;justify-content:center;padding:0;transition:all .12s;flex-shrink:0;}
+.mic-sm.on{display:flex;}
+.mic-sm:hover{border-color:var(--blue);color:var(--blue);}
+.mic-sm.rec{background:#dc2626;border-color:#dc2626;color:#fff;animation:pulse 1s ease-in-out infinite;}
+
+/* PHOTO */
+.btn-cam{width:22px;height:22px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--faint);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .12s;flex-shrink:0;}
+.btn-cam:hover{border-color:var(--blue);color:var(--blue);}
+.btn-cam.has{background:var(--blue-lt);border-color:var(--blue);color:var(--blue);}
+.ph-input{display:none;}
+.photo-strip{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.photo-thumb{position:relative;width:56px;height:56px;flex-shrink:0;}
+.photo-thumb img{width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer;}
+.photo-del{position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:#dc2626;color:#fff;border:none;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
+/* ADD AREA */
+.add-area{padding:10px 12px;border-top:1px solid var(--border-soft);display:flex;gap:8px;}
+.add-area input{flex:1;font-size:12px;font-family:inherit;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;transition:border-color .15s;}
+.add-area input:focus{border-color:var(--blue);background:#fff;}
+.add-area input::placeholder{color:var(--faint);}
+.btn-mic-add{width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;padding:0;}
+.btn-mic-add:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-lt);}
+.btn-mic-add.rec{background:#dc2626;border-color:#dc2626;color:#fff;animation:pulse 1s ease-in-out infinite;}
+.btn-add{font-size:12px;font-family:inherit;padding:8px 14px;border:1px solid var(--text);border-radius:8px;background:var(--text);color:var(--bg);cursor:pointer;font-weight:500;transition:background .15s;white-space:nowrap;}
+.btn-add:hover{background:var(--blue);border-color:var(--blue);}
+
+/* DIVIDER */
+.divider{display:flex;align-items:center;gap:12px;margin:.25rem 0 1.25rem;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.divider span{font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:.12em;white-space:nowrap;}
+
+.empty{font-size:12px;color:var(--faint);font-style:italic;padding:12px 8px;}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center;padding:1rem;}
+.overlay.on{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:560px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.18);}
+.modal-title{font-family:Georgia,serif;font-size:17px;font-weight:500;margin-bottom:6px;}
+.modal-sub{font-size:11px;color:var(--faint);margin-bottom:14px;}
+.modal textarea{width:100%;height:260px;font-size:12px;font-family:inherit;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);resize:none;outline:none;line-height:1.7;}
+.modal-actions{display:flex;gap:8px;margin-top:12px;justify-content:flex-end;}
+.btn-close{font-size:12px;font-family:inherit;padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;}
+.btn-copy{font-size:12px;font-family:inherit;padding:8px 18px;border:1px solid var(--text);border-radius:8px;background:var(--text);color:var(--bg);cursor:pointer;font-weight:500;transition:background .15s;}
+.btn-copy:hover{background:var(--blue);border-color:var(--blue);}
+.btn-copy.copied{background:#059669;border-color:#059669;}
+
+/* LIGHTBOX */
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:200;align-items:center;justify-content:center;padding:1rem;}
+.lightbox.on{display:flex;}
+.lightbox img{max-width:100%;max-height:90vh;border-radius:8px;}
+.lb-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:22px;cursor:pointer;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.4);}50%{box-shadow:0 0 0 5px rgba(220,38,38,0);}}
+@media(max-width:480px){body{padding:1.5rem .75rem 3rem;}.stat-value{font-size:24px;}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <div class="header-top">
+    <div class="af-logo">
+      <div class="af-mono"><span>AF</span></div>
+      <div class="af-name">
+        <strong>AFONSO FRANÇA</strong>
+        <small>Engenharia</small>
+      </div>
+    </div>
+    <span class="date-pill" id="today-date"></span>
+  </div>
+  <h1>Painel de <em>pendências</em></h1>
+  <p class="header-sub">clique numa tarefa para marcar como concluída</p>
+  <button class="btn-export" onclick="openExport()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M4 6.5h5M4 4.5h5M4 8.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+    copiar resumo para o Claude
+  </button>
+  <button class="btn-excel" onclick="exportExcel()">
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M4 5l2 4 2-4M9 5v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    exportar Excel
+  </button>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-label">Total</div><div class="stat-value" id="s-total">0</div></div>
+  <div class="stat"><div class="stat-label">Feitas</div><div class="stat-value" id="s-done">0</div></div>
+  <div class="stat"><div class="stat-label">Faltam</div><div class="stat-value" id="s-pend">0</div></div>
+</div>
+
+<div class="filter-bar" id="filter-bar">
+  <span class="filter-label">empresa:</span>
+  <div class="filter-chips" id="filter-chips"></div>
+</div>
+
+<div class="section">
+  <div class="sec-head">
+    <div class="sec-title">
+      <div class="avatar av-s">SA</div>
+      <h2>Samuel</h2>
+    </div>
+    <div class="sec-right">
+      <span class="count" id="cnt-samuel"></span>
+      <button class="btn-clear" onclick="clearDone('samuel')">limpar feitas</button>
+    </div>
+  </div>
+  <div class="task-list" id="list-samuel"></div>
+  <div class="add-area">
+    <button class="btn-mic-add" id="mic-samuel" onclick="toggleMic('samuel')" title="Voz">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="4" y="1" width="6" height="8" rx="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 7c0 2.76 2.24 5 5 5s5-2.24 5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="7" y1="12" x2="7" y2="13.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
+    <input type="text" id="inp-samuel" placeholder="nova tarefa para o Samuel..." onkeydown="if(event.key==='Enter')addTask('samuel')">
+    <button class="btn-add" onclick="addTask('samuel')">+ add</button>
+  </div>
+</div>
+
+<div class="divider"><span>minhas tarefas</span></div>
+
+<div class="section">
+  <div class="sec-head">
+    <div class="sec-title">
+      <div class="avatar av-v">EU</div>
+      <h2>Minhas pendências</h2>
+    </div>
+    <div class="sec-right">
+      <span class="count" id="cnt-voce"></span>
+      <button class="btn-clear" onclick="clearDone('voce')">limpar feitas</button>
+    </div>
+  </div>
+  <div class="task-list" id="list-voce"></div>
+  <div class="add-area">
+    <button class="btn-mic-add" id="mic-voce" onclick="toggleMic('voce')" title="Voz">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="4" y="1" width="6" height="8" rx="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 7c0 2.76 2.24 5 5 5s5-2.24 5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="7" y1="12" x2="7" y2="13.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
+    <input type="text" id="inp-voce" placeholder="nova tarefa minha..." onkeydown="if(event.key==='Enter')addTask('voce')">
+    <button class="btn-add" onclick="addTask('voce')">+ add</button>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="overlay" id="ov-export" onclick="if(event.target===this)closeExport()">
+  <div class="modal">
+    <div class="modal-title">Resumo para o Claude</div>
+    <div class="modal-sub">Clique em "copiar tudo" e cole no chat</div>
+    <textarea id="export-txt" readonly onclick="this.select()"></textarea>
+    <div class="modal-actions">
+      <button class="btn-close" onclick="closeExport()">fechar</button>
+      <button class="btn-copy" id="btn-copy" onclick="copyExport()">copiar tudo</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLB()">
+  <button class="lb-close" onclick="closeLB()">×</button>
+  <img id="lb-img" src="" alt="">
+</div>
+
+</div>
+<script>
+// ───── DATA ─────
+const SEED = {
+  samuel:[
+    {
+        "id": "S0",
+        "text": "Colar cantoneira na área de manutenção do 2SS",
+        "deadline": "2026-06-03",
+        "empresa": "Officeflex",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S1",
+        "text": "Dar acabamento nas placas do 2SS",
+        "deadline": "2026-06-05",
+        "empresa": "Officeflex",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S2",
+        "text": "Quebrar onde está embutido o tirante no 2SS",
+        "deadline": "2026-06-02",
+        "empresa": "Demolidora",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S3",
+        "text": "Impermeabilizar novamente o 2SS",
+        "deadline": "2026-06-03",
+        "empresa": "Integrall",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S4",
+        "text": "Quebrar contrapiso do 2SS",
+        "deadline": "2026-06-06",
+        "empresa": "Demolidora",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S5",
+        "text": "Pintar novamente a canaleta do 3SS no corredor que está bom",
+        "deadline": "2026-06-03",
+        "empresa": "Integrall",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S6",
+        "text": "Fechar as placas do 2SS no vestiário masculino (não esquecer o reforço)",
+        "deadline": "2026-06-04",
+        "empresa": "Officeflex",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S7",
+        "text": "Trocar de lugar as torneiras, jogando para fora",
+        "deadline": "2026-06-04",
+        "empresa": "Abelv",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S8",
+        "text": "Cobrar reforço na parede PVC na área da televisão",
+        "deadline": "2026-06-02",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S9",
+        "text": "Marcar a parede do 2SS na área de manutenção",
+        "deadline": "2026-06-09",
+        "empresa": "Sbocce",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S10",
+        "text": "Regularizar todos os banheiros, cortar os ralos e fechar a aranha para não cair mais água no 2SS",
+        "deadline": "2026-06-04",
+        "empresa": "Integrall",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S11",
+        "text": "Tirar a caixa de esgoto do 2SS, deixar no 4SS",
+        "deadline": "2026-06-07",
+        "empresa": "AF",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S12",
+        "text": "Regularizar banheiro 2SS",
+        "deadline": "2026-06-04",
+        "empresa": "Integrall",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S13",
+        "text": "Desformar base 2SS",
+        "deadline": "2026-06-06",
+        "empresa": "ASF",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S14",
+        "text": "PU paredes 2SS",
+        "deadline": "2026-06-04",
+        "empresa": "AF",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S15",
+        "text": "Tirar lona 2SS",
+        "deadline": "",
+        "empresa": "AF",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S16",
+        "text": "Quebra marcação porta 1SS",
+        "deadline": "",
+        "empresa": "AF",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "S17",
+        "text": "Regularização 1SS corredor",
+        "deadline": "",
+        "empresa": "Integrall",
+        "done": false,
+        "photos": []
+    }
+],
+  voce:[
+    {
+        "id": "V0",
+        "text": "Fazer a RM das portas conforme conversado com a Fernanda",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V1",
+        "text": "Jogar água no contrapiso dos subsolos",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V2",
+        "text": "Acompanhar a execução da parede PVC para ver a necessidade de tirar os dutos",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V3",
+        "text": "Verificar a ficha técnica do impermeabilizante",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V4",
+        "text": "Aditivo andaime",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V5",
+        "text": "Aditivo limpeza fachada",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V6",
+        "text": "Enviar para aprovação o projeto de estrutura metálica 2 pav",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V7",
+        "text": "Enviar e-mail solicitando a mudança da estrutura",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V8",
+        "text": "Arrumar os diários de obra da Itefal",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V9",
+        "text": "Tirar habilitação de moto (pessoal)",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V10",
+        "text": "Aditivo troca das placas",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V11",
+        "text": "Retomar assunto do reservatório do 1SS",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V12",
+        "text": "Reforço de madeira na cozinha, confirmar se colocaram",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V13",
+        "text": "Enviar janta PJ",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V14",
+        "text": "Confirmar se os vidros vão dar certo",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V15",
+        "text": "Aditivo reforço da Ciamon",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V16",
+        "text": "Acabamento piso escadas",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V17",
+        "text": "Disco de desbaste para o subsolo - cubeta",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V18",
+        "text": "Proteção de piso - verificar responsável",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V19",
+        "text": "Tinta para piso",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    },
+    {
+        "id": "V20",
+        "text": "Fechar com a FND a constituição das vigas",
+        "deadline": "",
+        "empresa": "",
+        "done": false,
+        "photos": []
+    }
+]
+};
+
+const KEY = 'obra_v14';
+let ST = {samuel:[],voce:[]};
+let filter = null;
+
+function load() {
+  try {
+    const s = localStorage.getItem(KEY);
+    ST = s ? JSON.parse(s) : seed();
+    // ensure photos field exists
+    [...ST.samuel,...ST.voce].forEach(t=>{ if(!t.photos) t.photos=[]; });
+  } catch(e) { ST = seed(); }
+}
+function seed() {
+  const s = JSON.parse(JSON.stringify(SEED));
+  s.samuel.forEach(t=>{ t.done=false; t.photos=[]; });
+  s.voce.forEach(t=>{ t.done=false; t.photos=[]; });
+  save();
+  return s;
+}
+function save() { try{ localStorage.setItem(KEY,JSON.stringify(ST)); }catch(e){} }
+function find(id) { return ST.samuel.find(t=>t.id===id)||ST.voce.find(t=>t.id===id); }
+
+// ───── RENDER ─────
+function dlClass(dl) {
+  if(!dl) return '';
+  const now=new Date(); now.setHours(0,0,0,0);
+  const diff=Math.round((new Date(dl+'T00:00:00')-now)/86400000);
+  return diff<=2?'urgent':diff<=5?'soon':'ok';
+}
+function dlFmt(dl) {
+  if(!dl) return '+ prazo';
+  const d=new Date(dl+'T00:00:00');
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+}
+function micIcon() {
+  return '<svg width="10" height="10" viewBox="0 0 14 14" fill="none"><rect x="4" y="1" width="6" height="8" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 7c0 2.76 2.24 5 5 5s5-2.24 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="12" x2="7" y2="13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+}
+function camIcon() {
+  return '<svg width="11" height="11" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="9" rx="2" stroke="currentColor" stroke-width="1.4"/><circle cx="7" cy="7.5" r="2.2" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 3L5.5 1h3l1 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+}
+
+function taskHTML(t) {
+  const dc = dlClass(t.deadline);
+  const dl = dlFmt(t.deadline);
+  const emp = t.empresa||'';
+  const hasPh = t.photos && t.photos.length>0;
+  const photos = (t.photos||[]).map((p,i)=>
+    '<div class="photo-thumb">' +
+    '<img src="'+p+'" onclick="openLB(\''+t.id+'\','+i+')">' +
+    '<button class="photo-del" onclick="delPhoto(\''+t.id+'\','+i+')">×</button>' +
+    '</div>'
+  ).join('');
+
+  return '<div class="task'+(t.done?' done':'')+'" id="task-'+t.id+'">' +
+    '<div class="chk" onclick="toggle(\''+t.id+'\')"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>' +
+    '<div class="task-body">' +
+      '<span class="task-text">'+t.text+'</span>' +
+      '<div class="task-meta">' +
+        '<span class="badge '+dc+'" onclick="openField(\'dl\',\''+t.id+'\')">'+dl+'</span>' +
+        '<input class="iinput" id="dl-'+t.id+'" type="date" onchange="saveDL(\''+t.id+'\',this.value)" onblur="closeField(\'dl\',\''+t.id+'\')">' +
+        '<button class="mic-sm" id="dlm-'+t.id+'" onclick="voiceDL(\''+t.id+'\')">'+micIcon()+'</button>' +
+        '<span class="badge'+(emp?' filled':'')+'" onclick="openField(\'emp\',\''+t.id+'\')">'+(emp||'+ empresa')+'</span>' +
+        '<input class="iinput" id="emp-'+t.id+'" type="text" placeholder="empresa..." onkeydown="if(event.key===\'Enter\'){saveEmp(\''+t.id+'\',this.value);this.blur();}" onblur="saveEmp(\''+t.id+'\',this.value)">' +
+        '<button class="mic-sm" id="empm-'+t.id+'" onclick="voiceEmp(\''+t.id+'\')">'+micIcon()+'</button>' +
+        '<button class="btn-cam'+(hasPh?' has':'')+'" onclick="document.getElementById(\'ph-'+t.id+'\').click()" title="Foto">'+camIcon()+'</button>' +
+        '<input type="file" accept="image/*" capture="environment" class="ph-input" id="ph-'+t.id+'" onchange="addPhoto(\''+t.id+'\',this)">' +
+      '</div>' +
+      (hasPh?'<div class="photo-strip">'+photos+'</div>':'') +
+    '</div>' +
+  '</div>';
+}
+
+function render() {
+  document.getElementById('today-date').textContent =
+    new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'}).replace(/\./g,'').toUpperCase();
+
+  ['samuel','voce'].forEach(who=>{
+    const tasks = filter
+      ? ST[who].filter(t=>(t.empresa||'').toLowerCase()===filter.toLowerCase())
+      : ST[who];
+    document.getElementById('list-'+who).innerHTML =
+      tasks.length ? tasks.map(taskHTML).join('') : '<div class="empty">nenhuma tarefa.</div>';
+    const done = ST[who].filter(t=>t.done).length;
+    document.getElementById('cnt-'+who).textContent = done+'/'+ST[who].length;
+  });
+
+  const all=[...ST.samuel,...ST.voce];
+  const done=all.filter(t=>t.done).length;
+  document.getElementById('s-total').textContent=all.length;
+  document.getElementById('s-done').textContent=done;
+  document.getElementById('s-pend').textContent=all.length-done;
+
+  renderFilter();
+}
+
+function renderFilter() {
+  const all=[...ST.samuel,...ST.voce];
+  const empresas=[...new Set(all.map(t=>t.empresa).filter(Boolean))].sort();
+  const bar=document.getElementById('filter-bar');
+  if(!empresas.length){ bar.classList.remove('on'); return; }
+  bar.classList.add('on');
+  document.getElementById('filter-chips').innerHTML =
+    '<span class="chip'+(filter===null?' on':'')+'" onclick="setFilter(null)">todas</span>' +
+    empresas.map(e=>'<span class="chip'+(filter===e?' on':'')+'" onclick="setFilter(\''+e.replace(/'/g,"\\'")+'\')">' +e+'</span>').join('');
+}
+
+// ───── ACTIONS ─────
+function toggle(id){ const t=find(id); if(t){t.done=!t.done;save();render();} }
+function addTask(who){
+  const inp=document.getElementById('inp-'+who);
+  const text=inp.value.trim(); if(!text)return;
+  ST[who].push({id:who[0].toUpperCase()+Date.now(),text,done:false,deadline:'',empresa:'',photos:[]});
+  inp.value=''; save(); render();
+}
+function clearDone(who){
+  if(!ST[who].some(t=>t.done))return;
+  if(confirm('Remover concluídas?')){ ST[who]=ST[who].filter(t=>!t.done); save(); render(); }
+}
+function setFilter(e){ filter=e; render(); }
+
+// ───── FIELDS ─────
+function openField(type,id){
+  const pfx=type==='dl'?'dl':'emp';
+  const inp=document.getElementById(pfx+'-'+id);
+  const mic=document.getElementById(pfx+'m-'+id);
+  if(!inp)return;
+  document.querySelectorAll('.iinput.on').forEach(el=>{ if(el!==inp)el.classList.remove('on'); });
+  document.querySelectorAll('.mic-sm.on').forEach(el=>{ if(el!==mic)el.classList.remove('on'); });
+  const t=find(id);
+  if(type==='dl'&&t&&t.deadline) inp.value=t.deadline;
+  if(type==='emp'&&t&&t.empresa) inp.value=t.empresa;
+  inp.classList.add('on'); mic.classList.add('on'); inp.focus();
+}
+function closeField(type,id){
+  setTimeout(()=>{
+    const pfx=type==='dl'?'dl':'emp';
+    const inp=document.getElementById(pfx+'-'+id);
+    const mic=document.getElementById(pfx+'m-'+id);
+    if(inp)inp.classList.remove('on');
+    if(mic)mic.classList.remove('on');
+  },250);
+}
+function saveDL(id,val){ const t=find(id); if(t){t.deadline=val;save();render();} }
+function saveEmp(id,val){
+  const t=find(id); if(!t)return;
+  const v=val.trim(); if(t.empresa===v)return;
+  t.empresa=v; save(); render();
+}
+
+// ───── PHOTOS ─────
+function addPhoto(id,input){
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=800; let w=img.width,h=img.height;
+      if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      const compressed=c.toDataURL('image/jpeg',.65);
+      const t=find(id); if(!t)return;
+      if(!t.photos)t.photos=[];
+      const total=[...ST.samuel,...ST.voce].flatMap(x=>x.photos||[]).reduce((s,p)=>s+p.length,0)+compressed.length;
+      if(total>4*1024*1024){alert('Limite de ~4MB atingido. Remova fotos antigas.');input.value='';return;}
+      t.photos.push(compressed); input.value=''; save(); render();
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function delPhoto(id,idx){
+  if(!confirm('Remover foto?'))return;
+  const t=find(id); if(t&&t.photos){t.photos.splice(idx,1);save();render();}
+}
+function openLB(id,idx){
+  const t=find(id); if(!t||!t.photos)return;
+  document.getElementById('lb-img').src=t.photos[idx];
+  document.getElementById('lightbox').classList.add('on');
+}
+function closeLB(){
+  document.getElementById('lightbox').classList.remove('on');
+  document.getElementById('lb-img').src='';
+}
+
+// ───── VOICE ─────
+let aRec=null,aWho=null,dlRec=null,empRec=null;
+function SR(){ return window.SpeechRecognition||window.webkitSpeechRecognition; }
+
+function toggleMic(who){
+  const C=SR(); const btn=document.getElementById('mic-'+who);
+  if(!C){alert('Use Google Chrome ou Edge para voz.');return;}
+  if(aWho===who&&aRec){aRec.stop();return;}
+  if(aRec)aRec.stop();
+  const r=new C(); r.lang='pt-BR'; r.continuous=false; r.interimResults=true;
+  aRec=r; aWho=who; btn.classList.add('rec');
+  document.getElementById('inp-'+who).placeholder='Ouvindo...';
+  r.onresult=e=>{document.getElementById('inp-'+who).value=Array.from(e.results).map(x=>x[0].transcript).join('');};
+  r.onend=()=>{btn.classList.remove('rec');document.getElementById('inp-'+who).placeholder=who==='samuel'?'nova tarefa para o Samuel...':'nova tarefa minha...';aRec=null;aWho=null;};
+  r.onerror=e=>{btn.classList.remove('rec');aRec=null;aWho=null;const m={'not-allowed':'Permissão negada.','no-speech':'Nenhuma fala.','network':'Erro de rede.','audio-capture':'Microfone não encontrado.'};if(e.error!=='aborted')alert(m[e.error]||'Erro: '+e.error);};
+  try{r.start();}catch(e){btn.classList.remove('rec');aRec=null;alert('Erro: '+e.message);}
+}
+
+function voiceDL(id){
+  const C=SR(); const btn=document.getElementById('dlm-'+id);
+  if(!C){alert('Use Chrome ou Edge.');return;}
+  if(dlRec){dlRec.stop();dlRec=null;return;}
+  const r=new C(); r.lang='pt-BR'; r.continuous=false; r.interimResults=false;
+  dlRec=r; btn.classList.add('rec');
+  r.onresult=e=>{const p=parseDt(e.results[0][0].transcript.toLowerCase());if(p)saveDL(id,p);else alert('Não entendi. Tente: "dia 15", "amanhã", "semana que vem".');};
+  r.onend=()=>{btn.classList.remove('rec');dlRec=null;};
+  r.onerror=e=>{btn.classList.remove('rec');dlRec=null;if(e.error!=='aborted')alert('Erro: '+e.error);};
+  r.start();
+}
+
+function voiceEmp(id){
+  const C=SR(); const btn=document.getElementById('empm-'+id);
+  if(!C){alert('Use Chrome ou Edge.');return;}
+  if(empRec){empRec.stop();empRec=null;return;}
+  const r=new C(); r.lang='pt-BR'; r.continuous=false; r.interimResults=false;
+  empRec=r; btn.classList.add('rec');
+  r.onresult=e=>{saveEmp(id,e.results[0][0].transcript.trim());};
+  r.onend=()=>{btn.classList.remove('rec');empRec=null;};
+  r.onerror=e=>{btn.classList.remove('rec');empRec=null;if(e.error!=='aborted')alert('Erro: '+e.error);};
+  r.start();
+}
+
+function parseDt(t){
+  const now=new Date(); now.setHours(0,0,0,0);
+  const pad=n=>String(n).padStart(2,'0');
+  const fmt=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  if(/hoje/.test(t))return fmt(now);
+  if(/amanh/.test(t)){const d=new Date(now);d.setDate(d.getDate()+1);return fmt(d);}
+  if(/semana/.test(t)){const d=new Date(now);d.setDate(d.getDate()+7);return fmt(d);}
+  const ms={janeiro:1,fevereiro:2,'março':3,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+  for(const[mn,mv]of Object.entries(ms)){const m=t.match(new RegExp('(\\d+)\\s+de\\s+'+mn));if(m){const d=new Date(now.getFullYear(),mv-1,parseInt(m[1]));if(d<now)d.setFullYear(d.getFullYear()+1);return fmt(d);}}
+  const m=t.match(/dia\s+(\d+)|^(\d+)$/);
+  if(m){const day=parseInt(m[1]||m[2]);if(day>=1&&day<=31){const d=new Date(now.getFullYear(),now.getMonth(),day);if(d<now)d.setMonth(d.getMonth()+1);return fmt(d);}}
+  return null;
+}
+
+// ───── EXPORT ─────
+function openExport(){
+  const lines=[];
+  ['samuel','voce'].forEach(who=>{
+    const label=who==='samuel'?'SAMUEL':'MINHAS PENDÊNCIAS';
+    const tasks=ST[who]; const done=tasks.filter(t=>t.done).length;
+    lines.push('── '+label+' ('+done+'/'+tasks.length+' concluídas) ──');
+    tasks.forEach(t=>{
+      const dl=t.deadline?' [prazo: '+dlFmt(t.deadline)+']':'';
+      const emp=t.empresa?' [empresa: '+t.empresa+']':'';
+      const ph=t.photos&&t.photos.length?' [fotos: '+t.photos.length+']':'';
+      lines.push((t.done?'✅':'⬜')+' '+t.text+dl+emp+ph);
+    });
+    lines.push('');
+  });
+  document.getElementById('export-txt').value=lines.join('\n').trim();
+  document.getElementById('ov-export').classList.add('on');
+  setTimeout(()=>{const ta=document.getElementById('export-txt');ta.focus();ta.select();},80);
+}
+function closeExport(){
+  document.getElementById('ov-export').classList.remove('on');
+  const b=document.getElementById('btn-copy'); b.textContent='copiar tudo'; b.classList.remove('copied');
+}
+function copyExport(){
+  const ta=document.getElementById('export-txt'); ta.select();
+  const b=document.getElementById('btn-copy');
+  const ok=()=>{b.textContent='copiado ✓';b.classList.add('copied');setTimeout(()=>{b.textContent='copiar tudo';b.classList.remove('copied');},2500);};
+  navigator.clipboard?navigator.clipboard.writeText(ta.value).then(ok).catch(()=>{document.execCommand('copy');ok();}):(document.execCommand('copy'),ok());
+}
+
+
+// ───── EXCEL EXPORT ─────
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+
+  ['samuel','voce'].forEach(who => {
+    const label = who === 'samuel' ? 'Samuel' : 'Minhas Pendencias';
+    const rows = [['#','Tarefa','Status','Prazo','Empresa','Fotos']];
+
+    ST[who].forEach((t, i) => {
+      rows.push([
+        i + 1,
+        t.text,
+        t.done ? 'Concluída' : 'Pendente',
+        t.deadline ? new Date(t.deadline + 'T00:00:00').toLocaleDateString('pt-BR') : '',
+        t.empresa || '',
+        (t.photos || []).length
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+
+    // Column widths
+    ws['!cols'] = [
+      {wch:4}, {wch:55}, {wch:12}, {wch:10}, {wch:18}, {wch:6}
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, label);
+  });
+
+  // Summary sheet
+  const all = [...ST.samuel, ...ST.voce];
+  const empresas = [...new Set(all.map(t => t.empresa).filter(Boolean))].sort();
+  const sumRows = [['Empresa','Total','Pendentes','Concluídas']];
+  empresas.forEach(emp => {
+    const tasks = all.filter(t => t.empresa === emp);
+    sumRows.push([emp, tasks.length, tasks.filter(t=>!t.done).length, tasks.filter(t=>t.done).length]);
+  });
+  sumRows.push(['(sem empresa)', all.filter(t=>!t.empresa).length,
+    all.filter(t=>!t.empresa&&!t.done).length, all.filter(t=>!t.empresa&&t.done).length]);
+
+  const wsSummary = XLSX.utils.aoa_to_sheet(sumRows);
+  wsSummary['!cols'] = [{wch:20},{wch:8},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumo Empresas');
+
+  const today = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'pendencias_obra_' + today + '.xlsx');
+}
+
+load(); render();
+</script>
+
+<div style="text-align:center;padding:2rem 1rem 1rem;font-size:10px;color:#8aa0bc;font-family:'Courier New',monospace;letter-spacing:.08em;">
+  AFONSO FRANÇA ENGENHARIA · PAINEL DE PENDÊNCIAS · v2026-06-02d
+</div>
+</body>
+</html>
